@@ -26,6 +26,10 @@ body {
     radial-gradient(ellipse at 0% 0%, rgba(255, 42, 61, 0.08), transparent 50%);
   background-attachment: fixed;
 }
+@keyframes twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(1); }
+  50%      { opacity: 0.8;  transform: scale(1.6); }
+}
 
 .glow-text {
   text-shadow: 0 0 24px rgba(255, 42, 61, 0.65);

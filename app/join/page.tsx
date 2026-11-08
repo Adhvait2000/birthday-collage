@@ -9,7 +9,7 @@ import { compress } from "@/lib/image";
 const MAX_PHOTOS = 5;
 const MAX_BYTES = 10 * 1024 * 1024;
 
-type Draft = { src: string; caption: string };
+type Draft = { blob: Blob; preview: string; caption: string };
 
 export default function JoinPage() {
   const { state, ready } = useAppState();
@@ -18,6 +18,7 @@ export default function JoinPage() {
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [idx, setIdx] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState("");
   const [sent, setSent] = useState(0);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -38,7 +39,8 @@ export default function JoinPage() {
         continue;
       }
       try {
-        next.push({ src: await compress(f), caption: "" });
+        const blob = await compress(f);
+        next.push({ blob, preview: URL.createObjectURL(blob), caption: "" });
       } catch (e) {
         setError(e instanceof Error ? e.message : "Couldn't read that photo.");
       }
@@ -52,10 +54,24 @@ export default function JoinPage() {
     if (fileRef.current) fileRef.current.value = "";
   }
 
-  function send() {
-    if (!guest || !drafts.length) return;
-    addPhotos(guest, drafts);
-    setSent(drafts.length);
+  async function send() {
+    if (!guest || !drafts.length || sending) return;
+    setSending(true);
+    setError("");
+    const result = await addPhotos(
+      guest,
+      drafts.map((d) => ({ blob: d.blob, caption: d.caption })),
+    );
+    drafts.slice(0, result.sent).forEach((d) => URL.revokeObjectURL(d.preview));
+    setSending(false);
+    if (result.error) {
+      // Keep whatever didn't go through so the guest can just tap Send again.
+      setDrafts(drafts.slice(result.sent));
+      setIdx(0);
+      setError(result.error);
+      return;
+    }
+    setSent(result.sent);
     setDrafts([]);
     setIdx(0);
   }
@@ -74,9 +90,12 @@ export default function JoinPage() {
           <p className="mt-2 text-center text-sm text-white/60">Your name shows next to your photos on the big screen.</p>
           <form
             className="mt-8 flex flex-col gap-4"
-            onSubmit={(e) => {
+            onSubmit={async (e) => {
               e.preventDefault();
-              if (nameOk) setGuest(joinGuest(name));
+              if (!nameOk || busy) return;
+              setBusy(true);
+              setGuest(await joinGuest(name));
+              setBusy(false);
             }}
           >
             <label className="sr-only" htmlFor="name">Your display name</label>
@@ -90,7 +109,7 @@ export default function JoinPage() {
               className="rounded-2xl border border-line bg-panel px-4 py-4 text-lg outline-none placeholder:text-white/30 focus:border-brand"
             />
             <button
-              disabled={!nameOk}
+              disabled={!nameOk || busy}
               className="rounded-2xl bg-brand py-4 text-lg font-bold shadow-[0_0_24px_rgba(255,42,61,0.45)] transition active:scale-[0.98] disabled:opacity-40 disabled:shadow-none"
             >
               Join the party
@@ -124,12 +143,14 @@ export default function JoinPage() {
             {cur ? (
               <>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={cur.src} alt="" className="absolute inset-0 size-full scale-110 object-cover blur-2xl brightness-50" />
+                <img src={cur.preview} alt="" className="absolute inset-0 size-full scale-110 object-cover blur-2xl brightness-50" />
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={cur.src} alt="Preview of your photo" className="absolute inset-0 size-full object-contain" />
+                <img src={cur.preview} alt="Preview of your photo" className="absolute inset-0 size-full object-contain" />
                 <button
                   aria-label="Remove this photo"
+                  disabled={sending}
                   onClick={() => {
+                    URL.revokeObjectURL(cur.preview);
                     setDrafts((d) => d.filter((_, i) => i !== idx));
                     setIdx(0);
                   }}
@@ -197,14 +218,15 @@ export default function JoinPage() {
               <>
                 <button
                   onClick={send}
-                  className="rounded-2xl bg-brand py-4 text-lg font-bold shadow-[0_0_24px_rgba(255,42,61,0.45)] active:scale-[0.98]"
+                  disabled={sending}
+                  className="rounded-2xl bg-brand py-4 text-lg font-bold shadow-[0_0_24px_rgba(255,42,61,0.45)] active:scale-[0.98] disabled:opacity-60"
                 >
-                  Send {drafts.length > 1 ? `${drafts.length} photos` : "photo"} to the big screen
+                  {sending ? "Sending…" : `Send ${drafts.length > 1 ? `${drafts.length} photos` : "photo"} to the big screen`}
                 </button>
                 {drafts.length < MAX_PHOTOS && (
                   <button
                     onClick={() => fileRef.current?.click()}
-                    disabled={busy}
+                    disabled={busy || sending}
                     className="rounded-2xl border border-line py-3 text-sm font-semibold text-white/80"
                   >
                     Add another

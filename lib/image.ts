@@ -1,5 +1,5 @@
 // Resize + re-encode in a canvas. This also strips EXIF/location metadata.
-export async function compress(file: File, max = 1100, quality = 0.72): Promise<string> {
+export async function compress(file: File, max = 1100, quality = 0.72): Promise<Blob> {
   let source: CanvasImageSource & { width: number; height: number };
   let close: (() => void) | undefined;
   try {
@@ -24,8 +24,10 @@ export async function compress(file: File, max = 1100, quality = 0.72): Promise<
   c.width = Math.round(source.width * scale);
   c.height = Math.round(source.height * scale);
   c.getContext("2d")!.drawImage(source, 0, 0, c.width, c.height);
-  close?.();
-  return c.toDataURL("image/jpeg", quality);
+   close?.();
+  const blob = await new Promise<Blob | null>((res) => c.toBlob(res, "image/jpeg", quality));
+  if (!blob) throw new Error("Couldn't process that photo.");
+  return blob;
 }
 
 const EMOJI = ["🪩", "🎉", "🥂", "💃", "🕺", "📸", "🎂", "🔥", "✨", "🎶"];
@@ -39,7 +41,7 @@ const LINES = [
   "",
 ];
 
-export function randomDemo(i: number) {
+export async function randomDemo(i: number) {
   const portrait = i % 3 === 0;
   const w = portrait ? 800 : 1200;
   const h = portrait ? 1050 : 800;
@@ -66,8 +68,10 @@ export function randomDemo(i: number) {
   g.fillStyle = "#fff";
   g.font = `bold ${Math.round(h * 0.07)}px sans-serif`;
   g.fillText("PUSHING 30", w / 2, h * 0.82);
+  const blob = await new Promise<Blob | null>((res) => c.toBlob(res, "image/jpeg", 0.7));
+  if (!blob) throw new Error("Couldn't build test photo.");
   return {
-    src: c.toDataURL("image/jpeg", 0.7),
+    blob,
     name: NAMES[i % NAMES.length],
     caption: LINES[i % LINES.length],
   };

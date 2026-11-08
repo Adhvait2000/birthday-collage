@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   Clock, Eye, EyeOff, Image as ImageIcon, Monitor, Pause, Play, QrCode, RotateCcw, Settings as Cog,
-  Trash2, Users, Zap, Check, ChevronRight, Home,
+  Trash2, Users, Zap, Check, ChevronRight, Home, LogOut,
 } from "lucide-react";
 import { Brand, Toggle } from "@/components/Brand";
 import { AdminGate } from "@/components/AdminGate";
+import { signOut } from "@/lib/auth";
 import {
   addPhotos, clearPhotos, patchSettings, removePhoto, replayPhoto, setPhotoStatus, timeAgo, useAppState,
   useWallStatus, type Photo,
@@ -79,6 +80,12 @@ function Dashboard() {
           <Link href="/" className="flex items-center gap-3 rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-white/60 hover:bg-panel2">
             <Home className="size-5" /> <span className="hidden sm:inline">Home</span>
           </Link>
+          <button
+            onClick={() => void signOut()}
+            className="flex items-center gap-3 rounded-xl border border-transparent px-4 py-3 text-sm font-semibold text-white/60 hover:bg-panel2"
+          >
+            <LogOut className="size-5" /> <span className="hidden sm:inline">Sign out</span>
+          </button>
         </nav>
         <div className="hidden text-center text-[10px] tracking-[0.25em] text-white/30 lg:block">
           GOOD PHOTOS<br />BETTER PEOPLE
@@ -151,7 +158,7 @@ function Dashboard() {
               </Link>
               <div className="grid grid-cols-3 gap-3">
                 <Stat icon={ImageIcon} n={state.photos.length} label="photos shared" />
-                <Stat icon={Users} n={state.guests.length} label="guests joined" />
+                <Stat icon={Users} n={state.guestCount} label="guests joined" />
                 <Stat icon={Clock} n={queued + pending} label="in queue" />
               </div>
             </div>
@@ -190,16 +197,16 @@ function Dashboard() {
             <Panel title="Wall">
               <div className="flex flex-col gap-4">
                 <Field label="Event title">
-                  <input
+                  <CommitInput
                     value={settings.title}
-                    onChange={(e) => patchSettings({ title: e.target.value })}
+                    onCommit={(v) => patchSettings({ title: v })}
                     className="w-full rounded-xl border border-line bg-panel2 px-3 py-2.5 outline-none focus:border-brand"
                   />
                 </Field>
                 <Field label="Join link shown in the QR code" hint="Leave blank to use this site's /join. When you deploy or use your laptop's Wi-Fi address, put it here so phones can reach it.">
-                  <input
+                  <CommitInput
                     value={settings.joinUrl}
-                    onChange={(e) => patchSettings({ joinUrl: e.target.value })}
+                    onCommit={(v) => patchSettings({ joinUrl: v })}
                     placeholder="https://your-site.example/join"
                     className="w-full rounded-xl border border-line bg-panel2 px-3 py-2.5 outline-none placeholder:text-white/25 focus:border-brand"
                   />
@@ -215,25 +222,51 @@ function Dashboard() {
             <Panel title="Testing">
               <p className="mb-3 text-sm text-white/60">Handy for checking the wall without a party full of phones.</p>
               <div className="flex flex-wrap gap-2">
-                <Btn icon={Zap} onClick={() => {
-                  const d = randomDemo(Math.floor(Math.random() * 1000));
-                  addPhotos({ id: "demo", name: d.name }, [{ src: d.src, caption: d.caption }]);
+                <Btn icon={Zap} onClick={async () => {
+                  const d = await randomDemo(Math.floor(Math.random() * 1000));
+                  await addPhotos({ id: "demo", name: d.name }, [{ blob: d.blob, caption: d.caption }]);
                 }}>Send test photo</Btn>
-                <Btn icon={Zap} onClick={() => {
+                <Btn icon={Zap} onClick={async () => {
                   const base = Math.floor(Math.random() * 1000);
-                  const items = Array.from({ length: 5 }, (_, i) => randomDemo(base + i));
-                  items.forEach((d) => addPhotos({ id: "demo", name: d.name }, [{ src: d.src, caption: d.caption }]));
+                  for (let i = 0; i < 5; i++) {
+                    const d = await randomDemo(base + i);
+                    await addPhotos({ id: "demo", name: d.name }, [{ blob: d.blob, caption: d.caption }]);
+                  }
                 }}>Send burst of 5</Btn>
                 <Btn danger icon={Trash2} onClick={() => confirm("Delete ALL photos?") && clearPhotos()}>Clear all photos</Btn>
               </div>
               <p className="mt-4 text-xs text-white/40">
-                Preview build: photos live in this browser&apos;s storage (about 40–60 fit) and the dashboard has no login yet.
+                Photos are stored in Supabase. Test photos use the guest name shown on the wall and count toward your storage.
               </p>
             </Panel>
           </div>
         )}
       </section>
     </main>
+  );
+}
+
+// Text field that only saves when you click away or press Enter, so typing doesn't
+// fire a database write (and a realtime echo) on every keystroke.
+function CommitInput({
+  value,
+  onCommit,
+  ...props
+}: { value: string; onCommit: (v: string) => void } & Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange">) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      {...props}
+      value={draft ?? value}
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={() => {
+        if (draft !== null && draft !== value) onCommit(draft);
+        setDraft(null);
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") e.currentTarget.blur();
+      }}
+    />
   );
 }
 
