@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-ink: #080304;
+  --color-panel: #12080a;
+  --color-panel2: #1a0c0f;
+  --color-line: #3a1217;
+  --color-brand: #ff2a3d;
+  --color-brand2: #ff5a4d;
+  --font-sans: var(--font-geist-sans);
+}
+
+html,
+body {
+  background: #080304;
+  color: #fff;
+  min-height: 100%;
+}
+
+body {
+  background-image: radial-gradient(
+      ellipse at 50% 120%,
+      rgba(255, 42, 61, 0.18),
+      transparent 60%
+    ),
+    radial-gradient(ellipse at 0% 0%, rgba(255, 42, 61, 0.08), transparent 50%);
+  background-attachment: fixed;
+}
+
+.glow-text {
+  text-shadow: 0 0 24px rgba(255, 42, 61, 0.65);
+}
+.glow-box {
+  box-shadow: 0 0 0 1px rgba(255, 42, 61, 0.55), 0 0 28px rgba(255, 42, 61, 0.25);
+}
+
+@keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
+@keyframes fadeOut { from { opacity: 1 } to { opacity: 0 } }
+@keyframes kenburns { from { transform: scale(1) } to { transform: scale(1.07) } }
+@keyframes riseIn { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: none } }
+@keyframes pulseDot { 0%,100% { opacity: 1 } 50% { opacity: .35 } }
+@keyframes drift {
+  0% { transform: translate3d(0,0,0) scale(1) }
+  50% { transform: translate3d(3%,-4%,0) scale(1.12) }
+  100% { transform: translate3d(0,0,0) scale(1) }
+}
+
+.anim-fade-in { animation: fadeIn 0.6s ease both }
+.anim-fade-out { animation: fadeOut 0.6s ease both }
+.anim-kenburns { animation: kenburns 10s ease-out both }
+.anim-rise { animation: riseIn 0.5s ease both }
+.anim-pulse { animation: pulseDot 1.6s ease-in-out infinite }
+.anim-drift { animation: drift 14s ease-in-out infinite }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
