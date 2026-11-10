@@ -214,8 +214,8 @@ function Dashboard() {
                 <Row icon={QrCode} title="Show QR on wall" body="Corner QR while photos play.">
                   <Toggle label="Show QR on wall" on={settings.showQr} onChange={(v) => patchSettings({ showQr: v })} />
                 </Row>
-                <Row icon={Clock} title="Carousel speed" body="Seconds per gallery photo.">
-                  <Select value={settings.carouselSec} onChange={(v) => patchSettings({ carouselSec: v })} options={[5, 6, 7, 8, 10]} />
+                <Row icon={Clock} title="Carousel speed" body="Higher = slower drift across the wall.">
+                  <Select value={settings.carouselSec} onChange={(v) => patchSettings({ carouselSec: v })} options={[10, 15, 20, 25, 30, 40, 60]} />
                 </Row>
               </div>
             </Panel>

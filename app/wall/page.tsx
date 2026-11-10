@@ -112,9 +112,9 @@ function Backdrop() {
 
 /* ---------- Sine-wave carousel (left -> right) ---------- */
 
-// Each card is 28vw wide + 4vw gap = 32vw. Crossing the 100vw screen takes ~128vw of travel,
-// so 2s per card keeps every photo on screen for about 8 seconds.
-const SEC_PER_PHOTO = 10;
+// Each card is 28vw wide + 4vw gap = 32vw. The host's "Carousel speed" setting is how many
+// seconds the track takes to move one card pitch: higher = slower. At 20, a photo is on screen
+// for roughly 80 seconds.
 const CARD_PITCH_VW = 32;
 const WAVE_TARGET_VW = 90; // approx wavelength of the sine path
 const WAVE_AMP_VH = 11; // vertical swing
@@ -125,7 +125,7 @@ const WAVE_FRAMES: Keyframe[] = Array.from({ length: 25 }, (_, n) => {
   return { transform: `translateY(${(Math.sin(th) * WAVE_AMP_VH).toFixed(3)}vh) rotate(${(Math.cos(th) * 3).toFixed(3)}deg)` };
 });
 
-function Drift({ photos, showNames }: { photos: Photo[]; showNames: boolean }) {
+function Drift({ photos, showNames, secPerPhoto }: { photos: Photo[]; showNames: boolean; secPerPhoto: number }) {
   // Repeat so one set always overfills the screen, then render it twice for a seamless loop.
   const set = useMemo(() => {
     const reps = Math.max(1, Math.ceil(8 / photos.length));
@@ -136,9 +136,9 @@ function Drift({ photos, showNames }: { photos: Photo[]; showNames: boolean }) {
   // Whole number of wave cycles per set so the wave stays seamless where the two sets meet.
   const cycles = Math.max(1, Math.round((L * CARD_PITCH_VW) / WAVE_TARGET_VW));
   const waveLen = (L * CARD_PITCH_VW) / cycles; // vw
-  const speed = CARD_PITCH_VW / SEC_PER_PHOTO; // vw per second
+  const speed = CARD_PITCH_VW / secPerPhoto; // vw per second
   const wavePeriod = (waveLen / speed) * 1000; // ms for one cycle of a card's up/down motion
-  const dur = L * SEC_PER_PHOTO * 1000;
+  const dur = L * secPerPhoto * 1000;
 
   const trackRef = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
@@ -311,7 +311,7 @@ export default function WallPage() {
         <Backdrop />
 
         {hasPhotos ? (
-          <Drift photos={live} showNames={settings.showNames} />
+          <Drift photos={live} showNames={settings.showNames} secPerPhoto={settings.carouselSec} />
         ) : (
           <Idle title={settings.title} joinUrl={joinUrl} joinHost={joinHost} />
         )}

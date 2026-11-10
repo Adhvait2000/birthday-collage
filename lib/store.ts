@@ -47,7 +47,7 @@ export const DEFAULTS: AppState = {
     showNames: true,
     showQr: true,
     spotlightSec: 10,
-    carouselSec: 10,
+    carouselSec: 20,
     title: "PUSHING 30",
     joinUrl: "",
   },
